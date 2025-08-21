@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tournament Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white">
+
+  <!-- Navbar -->
+  <nav class="bg-gray-800 shadow p-4 flex justify-between items-center">
+    <div class="text-xl font-bold">Tournament Portal</div>
+    <div class="space-x-4">
+      <button onclick="showSection('home')" class="hover:text-blue-400">Home</button>
+      <button onclick="showSection('tournaments')" class="hover:text-blue-400">Tournaments</button>
+      <button id="authNav" onclick="showSection('auth')" class="hover:text-blue-400">Login/Register</button>
+      <button id="profileNav" onclick="showSection('profile')" class="hidden hover:text-blue-400">Profile</button>
+      <button id="matchesNav" onclick="showSection('myMatches')" class="hidden hover:text-blue-400">My Matches</button>
+    </div>
+  </nav>
+
+  <!-- Sections -->
+  <section id="home" class="p-8 text-center">
+    <h1 class="text-4xl font-bold mb-4">Welcome to Tournament Portal</h1>
+    <p class="text-gray-400 mb-6">Join exciting tournaments, track results, and compete with players worldwide.</p>
+    <button onclick="showSection('tournaments')" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded">View Tournaments</button>
+  </section>
+
+  <section id="auth" class="hidden p-8 max-w-md mx-auto">
+    <div class="bg-gray-800 p-6 rounded shadow">
+      <div class="flex justify-around mb-4">
+        <button onclick="switchAuth('login')" id="loginTab" class="text-blue-400">Login</button>
+        <button onclick="switchAuth('register')" id="registerTab">Register</button>
+      </div>
+      <form id="loginForm" class="space-y-4">
+        <input name="username" placeholder="Username" class="w-full p-2 rounded bg-gray-700" required>
+        <input type="password" name="password" placeholder="Password" class="w-full p-2 rounded bg-gray-700" required>
+        <button class="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded">Login</button>
+      </form>
+      <form id="registerForm" class="hidden space-y-4">
+        <input name="email" placeholder="Email" class="w-full p-2 rounded bg-gray-700" required>
+        <input name="name" placeholder="Full Name" class="w-full p-2 rounded bg-gray-700" required>
+        <input name="username" placeholder="Username" class="w-full p-2 rounded bg-gray-700" required>
+        <input type="password" name="password" placeholder="Password" class="w-full p-2 rounded bg-gray-700" required>
+        <input name="phonenumber" type="number" placeholder="Phone Number" class="w-full p-2 rounded bg-gray-700" required>
+        <button class="w-full bg-green-600 hover:bg-green-700 p-2 rounded">Register</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="tournaments" class="hidden p-8">
+    <h2 class="text-2xl font-bold mb-4">Available Tournaments</h2>
+    <div id="tournamentGrid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+  </section>
+
+  <section id="profile" class="hidden p-8 max-w-md mx-auto text-center">
+    <h2 class="text-2xl font-bold mb-4">Profile</h2>
+    <p id="profileUser" class="mb-2"></p>
+    <p id="profileEmail" class="mb-2"></p>
+    <p id="profilePhone" class="mb-4"></p>
+    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-6 py-2 rounded">Logout</button>
+  </section>
+
+  <section id="myMatches" class="hidden p-8">
+    <h2 class="text-2xl font-bold mb-4">My Matches</h2>
+    <div id="matchesGrid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+  </section>
+
+  <script>
+    const API_BASE = "https://gali-game.onrender.com";
+    let token = localStorage.getItem("token");
+    let username = localStorage.getItem("username");
+
+    // ---------------------------
+    // Section switching
+    function showSection(id){
+      document.querySelectorAll("section").forEach(s => s.classList.add("hidden"));
+      document.getElementById(id).classList.remove("hidden");
+      if(id === "tournaments") loadTournaments();
+      if(id === "myMatches") loadMyMatches();
+    }
+
+    function switchAuth(mode){
+      if(mode === 'login'){
+        document.getElementById("loginForm").classList.remove("hidden");
+        document.getElementById("registerForm").classList.add("hidden");
+        document.getElementById("loginTab").classList.add("text-blue-400");
+        document.getElementById("registerTab").classList.remove("text-blue-400");
+      } else {
+        document.getElementById("registerForm").classList.remove("hidden");
+        document.getElementById("loginForm").classList.add("hidden");
+        document.getElementById("registerTab").classList.add("text-blue-400");
+        document.getElementById("loginTab").classList.remove("text-blue-400");
+      }
+    }
+
+    // ---------------------------
+    // Auth UI update
+    function updateAuthUI(){
+      if(token){
+        document.getElementById("authNav").classList.add("hidden");
+        document.getElementById("profileNav").classList.remove("hidden");
+        document.getElementById("matchesNav").classList.remove("hidden");
+      } else {
+        document.getElementById("authNav").classList.remove("hidden");
+        document.getElementById("profileNav").classList.add("hidden");
+        document.getElementById("matchesNav").classList.add("hidden");
+      }
+    }
+
+    function logout(){
+      token = null;
+      username = null;
+      localStorage.clear();
+      updateAuthUI();
+      showSection("home");
+    }
+
+    // ---------------------------
+    // Register
+    document.getElementById("registerForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      const res = await fetch(`${API_BASE}/api/user/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if(res.ok){
+        alert("Registration successful. Please login.");
+        switchAuth('login');
+      } else {
+        alert(json.detail || "Error");
+      }
+    });
+
+    // ---------------------------
+    // Login
+    document.getElementById("loginForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      const res = await fetch(`${API_BASE}/api/user/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if(res.ok){
+        token = json.access_token;
+        username = data.username;
+        localStorage.setItem("token", token);
+        localStorage.setItem("username", username);
+        updateAuthUI();
+        showSection("tournaments");
+      } else {
+        alert(json.detail || "Login failed");
+      }
+    });
+
+    // ---------------------------
+    // Load tournaments
+    async function loadTournaments(){
+      const res = await fetch(`${API_BASE}/api/user/tournaments`);
+      const tournaments = await res.json();
+      const grid = document.getElementById("tournamentGrid");
+      grid.innerHTML = "";
+
+      for(let t of tournaments){
+        const card = document.createElement("div");
+        card.className = "bg-gray-800 p-4 rounded shadow flex flex-col justify-between";
+        card.innerHTML = `
+          <div>
+            <h3 class="text-xl font-bold">${t.game_name}</h3>
+            <p>Type: ${t.match_type}</p>
+            <p>Entry Fee: ${t.entry_fee}</p>
+            <p>Prize: ${t.prize}</p>
+            <p>Status: <span class="text-yellow-400">${t.status}</span></p>
+          </div>
+          <div class="mt-2">
+            <input id="gameid-${t.tournament_id}" placeholder="Game ID" class="w-full p-1 rounded bg-gray-700 mb-1">
+            <button onclick="joinTournament('${t.tournament_id}')" class="w-full bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded">Join</button>
+            <button onclick="viewRoom('${t.tournament_id}')" id="roomBtn-${t.tournament_id}" class="hidden w-full bg-green-600 hover:bg-green-700 px-2 py-1 rounded mt-1">View Room</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      }
+    }
+
+    // ---------------------------
+    // Join tournament
+    async function joinTournament(tournament_id){
+      const gameIdInput = document.getElementById(`gameid-${tournament_id}`);
+      const game_id = gameIdInput.value.trim();
+      if(!token) { alert("Please login first"); return; }
+      if(!game_id) { alert("Enter Game ID"); return; }
+
+      const body = { tournament_id, game_id, username };
+      const res = await fetch(`${API_BASE}/api/user/join`, {
+        method: "POST",
+        headers:{ "Content-Type":"application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify(body)
+      });
+      const json = await res.json();
+      if(res.ok){
+        alert("Joined successfully");
+        document.getElementById(`roomBtn-${tournament_id}`).classList.remove("hidden");
+      } else {
+        alert(json.detail || "Error joining");
+      }
+    }
+
+    // ---------------------------
+    // View Room Credentials
+    async function viewRoom(tournament_id){
+      if(!token) return alert("Login required");
+      const res = await fetch(`${API_BASE}/api/user/rooms-creds/${tournament_id}`,{
+        headers:{ "Authorization": `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if(res.ok){
+        alert(`Room ID: ${json.creds.room_id}\nPassword: ${json.creds.passwd}`);
+      } else {
+        alert(json.detail || "Error fetching credentials");
+      }
+    }
+
+    // ---------------------------
+    // Load profile
+    async function loadProfile(){
+      const res = await fetch(`${API_BASE}/api/user/my-matches`, {
+        headers:{ "Authorization": `Bearer ${token}` }
+      });
+      if(!res.ok) return;
+      const matches = await res.json();
+      const profileUser = localStorage.getItem("username");
+      document.getElementById("profileUser").textContent = `Username: ${profileUser}`;
+      // Optionally fetch full user info if backend has email/phone endpoint
+    }
+
+    // ---------------------------
+    // Load My Matches
+    async function loadMyMatches(){
+      const res = await fetch(`${API_BASE}/api/user/my-matches`, {
+        headers:{ "Authorization": `Bearer ${token}` }
+      });
+      const matches = await res.json();
+      const grid = document.getElementById("matchesGrid");
+      grid.innerHTML = "";
+      matches.forEach(m => {
+        const card = document.createElement("div");
+        card.className = "bg-gray-800 p-4 rounded shadow";
+        card.innerHTML = `
+          <h3 class="text-xl font-bold">${m.game_id}</h3>
+          <p>Tournament: ${m.tournament_id}</p>
+          <p>Joined At: ${new Date(m.date_time).toLocaleString()}</p>
+          <button onclick="viewRoom('${m.tournament_id}')" class="w-full bg-green-600 hover:bg-green-700 px-2 py-1 rounded mt-2">View Room</button>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // ---------------------------
+    // Init
+    updateAuthUI();
+    showSection("home");
+
+  </script>
+</body>
+</html>
