@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tournament Admin Panel</title>
+  <style>
+    :root {
+      --bg: #0f1222;
+      --card: #191c31;
+      --muted: #aab0d5;
+      --text: #e9ecff;
+      --primary: #7c9cf4;
+      --accent: #6fe0b4;
+      --danger: #ff6b6b;
+      --warning: #ffd166;
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.03);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 80% -10%, #1f2450, transparent 60%),
+                  radial-gradient(900px 600px at -10% 110%, #103a3a, transparent 60%),
+                  var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      position: sticky; top: 0; z-index: 10;
+      backdrop-filter: blur(8px);
+      background: linear-gradient(180deg, rgba(15,18,34,.9), rgba(15,18,34,.6));
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo { width: 36px; height: 36px; border-radius: 10px; background:
+      conic-gradient(from 200deg, var(--primary), var(--accent), var(--primary)); box-shadow: var(--shadow); }
+    .title { font-weight: 800; letter-spacing: .3px; }
+    .subtitle { color: var(--muted); font-size: .9rem; }
+
+    .row { display: grid; grid-template-columns: 1.1fr .9fr; gap: 20px; }
+    @media (max-width: 980px){ .row { grid-template-columns: 1fr; } }
+
+    .card { background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: var(--radius); box-shadow: var(--shadow); }
+    .card h2 { margin: 0 0 6px; font-size: 1.05rem; letter-spacing: .2px; }
+    .card .head { padding: 18px 18px 0; }
+    .card .body { padding: 18px; }
+
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+    .col-6 { grid-column: span 6; }  .col-12 { grid-column: span 12; } .col-4 { grid-column: span 4; }
+
+    label { display: block; font-size: .85rem; color: var(--muted); margin: 2px 2px 6px; }
+    input, select, button, textarea {
+      width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03); color: var(--text); outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124,156,244,.18); }
+    .hint { font-size: .78rem; color: var(--muted); margin-top: 6px; }
+
+    .actions { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+    .btn { cursor: pointer; font-weight: 700; letter-spacing: .2px; }
+    .btn.primary { background: linear-gradient(180deg, var(--primary), #5179ff); border: none; }
+    .btn.ghost { background: transparent; border: 1px dashed rgba(255,255,255,.15); color: var(--muted); }
+    .btn.warn { background: linear-gradient(180deg, var(--warning), #d4a514); border: none; color: #1b1607; }
+
+    .tabs { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+    .tab { padding: 10px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.08);
+           background: rgba(255,255,255,.02); color: var(--muted); cursor: pointer; }
+    .tab.active { background: rgba(124,156,244,.12); color: var(--text); border-color: rgba(124,156,244,.5); }
+
+    .panel { display: none; }
+    .panel.active { display: block; animation: fade .35s ease; }
+    @keyframes fade { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: none; } }
+
+    .log { background: #0b0e1f; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 12px; max-height: 320px; overflow: auto; }
+    pre { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: .85rem; }
+
+    .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .kpi .item { padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.03);
+                 text-align: center; }
+    .kpi .val { font-size: 1.3rem; font-weight: 800; }
+    .kpi .lbl { font-size: .8rem; color: var(--muted); }
+
+    .footer { color: var(--muted); font-size: .8rem; text-align: center; padding: 24px 0 60px; }
+    .sep { height: 1px; background: radial-gradient(200px 1px at 50% 50%, rgba(255,255,255,.2), transparent); margin: 14px 0; opacity: .6; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <div class="title">Tournament Admin Panel</div>
+          <div class="subtitle">FastAPI backend UI for matches, rooms, results & status</div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="grid" style="gap:12px; align-items:end;">
+        <div class="col-6">
+          <label>API Base URL</label>
+          <input id="baseUrl" placeholder="e.g., http://localhost:8000" value="http://localhost:8000" />
+          <div class="hint">All requests will be sent to this base. Ensure your FastAPI app is running.</div>
+        </div>
+        <div class="col-6">
+          <div class="kpi">
+            <div class="item"><div class="val" id="kpi-req">0</div><div class="lbl">Requests</div></div>
+            <div class="item"><div class="val" id="kpi-ok">0</div><div class="lbl">Success</div></div>
+            <div class="item"><div class="val" id="kpi-err">0</div><div class="lbl">Errors</div></div>
+            <div class="item"><div class="val" id="kpi-lat">–</div><div class="lbl">Last Latency (ms)</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="tabs" id="tabs"></div>
+    </div>
+  </header>
+
+  <main class="wrap" style="margin-top: 14px;">
+    <div id="panels"></div>
+
+    <section class="card" style="margin-top:18px;">
+      <div class="head"><h2>Response Console</h2></div>
+      <div class="body">
+        <div class="actions">
+          <button class="btn ghost" type="button" onclick="clearLog()">Clear</button>
+          <button class="btn warn" type="button" onclick="copyLog()">Copy</button>
+        </div>
+        <div class="log" style="margin-top:10px"><pre id="console"></pre></div>
+      </div>
+    </section>
+
+    <div class="footer">Built with ❤️ for your FastAPI endpoints. This is a static HTML/CSS/JS file — host anywhere.</div>
+  </main>
+
+  <script>
+    // ---------- Tabs/Forms Definition ----------
+    const sections = [
+      {
+        id: 'create', label: 'Create Match',
+        endpoint: '/admin/api/add', method: 'POST',
+        buildBody: (fd) => ({
+          tournament_id: fd.get('tournament_id'),
+          game_name: fd.get('game_name'),
+          match_type: fd.get('match_type'),
+          entry_fee: Number(fd.get('entry_fee')),
+          prize: Number(fd.get('prize')),
+          time: fd.get('time')
+        }),
+        fields: [
+          {name:'tournament_id', label:'Tournament ID', col:6, required:true},
+          {name:'game_name', label:'Game Name', col:6, required:true},
+          {name:'match_type', label:'Match Type', col:6, required:true, placeholder:'Solo / Duo / Squad'},
+          {name:'entry_fee', label:'Entry Fee', col:3, type:'number', min:0, step:'0.01', required:true},
+          {name:'prize', label:'Prize', col:3, type:'number', min:0, step:'0.01', required:true},
+          {name:'time', label:'Match Time', col:6, type:'datetime-local', required:true},
+        ]
+      },
+      {
+        id: 'room', label: 'Room Details',
+        endpoint: '/admin/api/match-details', method: 'POST',
+        buildBody: (fd) => ({
+          tournament_id: fd.get('tournament_id'),
+          room_id: fd.get('room_id'),
+          passwd: fd.get('passwd')
+        }),
+        fields: [
+          {name:'tournament_id', label:'Tournament ID', col:6, required:true},
+          {name:'room_id', label:'Room ID', col:3, required:true},
+          {name:'passwd', label:'Room Password', col:3, required:true}
+        ]
+      },
+      {
+        id: 'results', label: 'Post Results',
+        endpoint: '/admin/api/results', method: 'POST',
+        buildBody: (fd) => ({
+          tournament_id: fd.get('tournament_id'),
+          player_id: fd.get('player_id'),
+          kills: Number(fd.get('kills')),
+          prize: Number(fd.get('prize')),
+          match_time: fd.get('match_time')
+        }),
+        fields: [
+          {name:'tournament_id', label:'Tournament ID', col:6, required:true},
+          {name:'player_id', label:'Player ID', col:6, required:true},
+          {name:'kills', label:'Kills', col:4, type:'number', min:0, step:'1', required:true},
+          {name:'prize', label:'Prize (awarded)', col:4, type:'number', min:0, step:'0.01', required:true},
+          {name:'match_time', label:'Match Time', col:4, type:'datetime-local', required:true}
+        ]
+      },
+      {
+        id: 'status', label: 'Status Update',
+        endpoint: '/admin/api/update', method: 'POST',
+        buildBody: (fd) => ({
+          tournament_id: fd.get('tournament_id'),
+          status: fd.get('status')
+        }),
+        fields: [
+          {name:'tournament_id', label:'Tournament ID', col:6, required:true},
+          {name:'status', label:'Status', col:6, type:'select', options:['Upcoming','Live','Completed','Cancelled'], required:true}
+        ]
+      },
+      {
+        id: 'joined', label: 'Joined Users',
+        endpoint: '/admin/api/joined-user', method: 'POST',
+        buildBody: (fd) => null, // Uses query param per FastAPI function signature
+        fields: [
+          {name:'tournament_id', label:'Tournament ID', col:6, required:true},
+          {name:'limit', label:'(Optional) Limit (client-side)', col:6, type:'number', min:1, step:'1'}
+        ],
+        note: 'This endpoint expects the tournament_id as a QUERY parameter (e.g., POST /admin/api/joined-user?tournament_id=123).'
+      }
+    ];
+
+    // ---------- Render Tabs & Panels ----------
+    const tabsEl = document.getElementById('tabs');
+    const panelsEl = document.getElementById('panels');
+
+    sections.forEach((s, idx) => {
+      const tab = document.createElement('button');
+      tab.className = 'tab' + (idx === 0 ? ' active' : '');
+      tab.textContent = s.label;
+      tab.dataset.target = s.id;
+      tabsEl.appendChild(tab);
+
+      const panel = document.createElement('section');
+      panel.className = 'card panel' + (idx === 0 ? ' active' : '');
+      panel.id = s.id;
+      panel.innerHTML = `
+        <div class="head">
+          <h2>${s.label}</h2>
+          ${s.note ? `<div class="hint">${s.note}</div>` : ''}
+        </div>
+        <div class="body">
+          <form data-endpoint="${s.endpoint}" data-method="${s.method}" onsubmit="return submitForm(event)">
+            <div class="grid">
+              ${s.fields.map(f => fieldHtml(f)).join('')}
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="submit">Send</button>
+              <button class="btn ghost" type="reset">Reset</button>
+            </div>
+          </form>
+        </div>`;
+      panelsEl.appendChild(panel);
+    });
+
+    function fieldHtml(f){
+      const base = `class="col-${f.col || 12}"`;
+      const name = f.name;
+      const required = f.required ? 'required' : '';
+      const placeholder = f.placeholder ? `placeholder="${f.placeholder}"` : '';
+      const step = f.step ? `step="${f.step}"` : '';
+      const min = f.min !== undefined ? `min="${f.min}"` : '';
+      if(f.type === 'select'){
+        return `<div ${base}><label>${f.label}</label>
+          <select name="${name}" ${required}>
+            ${f.options.map(o => `<option value="${o}">${o}</option>`).join('')}
+          </select></div>`
+      }
+      const type = f.type || 'text';
+      return `<div ${base}>
+        <label>${f.label}</label>
+        <input ${placeholder} name="${name}" type="${type}" ${required} ${step} ${min}/>
+      </div>`;
+    }
+
+    // Tab switch
+    tabsEl.addEventListener('click', (e) => {
+      const tgt = e.target.closest('.tab');
+      if(!tgt) return;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tgt.classList.add('active');
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(tgt.dataset.target).classList.add('active');
+    });
+
+    // ---------- Networking Helpers ----------
+    let kReq = 0, kOk = 0, kErr = 0;
+    const kpiReq = document.getElementById('kpi-req');
+    const kpiOk = document.getElementById('kpi-ok');
+    const kpiErr = document.getElementById('kpi-err');
+    const kpiLat = document.getElementById('kpi-lat');
+
+    async function submitForm(ev){
+      ev.preventDefault();
+      const form = ev.target;
+      const fd = new FormData(form);
+      const endpoint = form.dataset.endpoint;
+      const method = form.dataset.method || 'POST';
+      const base = document.getElementById('baseUrl').value.replace(/\/$/, '');
+
+      let url = base + endpoint;
+      let body = null;
+      let headers = { 'Content-Type': 'application/json' };
+
+      const meta = sections.find(s => s.endpoint === endpoint);
+      if(meta.id === 'joined'){
+        // Send tournament_id as query param as per FastAPI signature
+        const tid = fd.get('tournament_id');
+        const qs = new URLSearchParams({ tournament_id: tid });
+        url += `?${qs.toString()}`;
+      } else {
+        body = JSON.stringify(meta.buildBody(fd));
+      }
+
+      const t0 = performance.now();
+      kpiReq.textContent = ++kReq;
+
+      try {
+        const res = await fetch(url, { method, headers, body });
+        const t1 = performance.now();
+        kpiLat.textContent = Math.round(t1 - t0);
+
+        let data;
+        const text = await res.text();
+        try { data = JSON.parse(text); } catch { data = { raw: text }; }
+
+        if(!res.ok){
+          kpiErr.textContent = ++kErr;
+          log({ level: 'error', url, method, status: res.status, data });
+          alert(`Error ${res.status}: check the console below.`);
+          return false;
+        }
+        kpiOk.textContent = ++kOk;
+
+        // Client-side limit for joined users
+        if(meta.id === 'joined'){
+          const limitVal = Number(fd.get('limit'));
+          if(limitVal && Array.isArray(data.users)){
+            data.users = data.users.slice(0, limitVal);
+          }
+        }
+
+        log({ level: 'info', url, method, data });
+        return false;
+      } catch (err){
+        kpiErr.textContent = ++kErr;
+        log({ level: 'fatal', url, method, error: String(err) });
+        alert('Network error — see console');
+        return false;
+      }
+    }
+
+    // ---------- Console ----------
+    const consoleEl = document.getElementById('console');
+    function log(entry){
+      const stamp = new Date().toLocaleString();
+      const str = JSON.stringify(entry, null, 2);
+      consoleEl.textContent = `[${stamp}]\n${str}\n\n` + consoleEl.textContent;
+    }
+    function clearLog(){ consoleEl.textContent = ''; }
+    async function copyLog(){
+      try { await navigator.clipboard.writeText(consoleEl.textContent); }
+      catch {}
+    }
+  </script>
+</body>
+</html>
